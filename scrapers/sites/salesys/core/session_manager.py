@@ -25,16 +25,6 @@ class SalesYsSessionManager(BaseSessionManager):
     - Un solo login para todos los scrapers de SalesYs (Nómina, RGA, Ventas, etc.)
     - Reutilización automática de sesión activa
     - Reintentos automáticos de login si falla
-
-    Uso:
-        from scrapers.salesys.session_manager import get_salesys_session
-
-        session = get_salesys_session()
-        driver = session.get_driver()
-
-        # ... usar driver con sesión activa
-
-        session.cleanup()  # Al final de todos los scrapers
     """
 
     @property
@@ -45,9 +35,6 @@ class SalesYsSessionManager(BaseSessionManager):
     def _perform_login(self) -> bool:
         """
         Login específico de SalesYs con reintentos.
-
-        Returns:
-            bool: True si login exitoso, False en caso contrario
         """
         try:
             # Crear driver
