@@ -42,7 +42,7 @@ class RGAScraper(BaseSalesys):
 
     def navegar_a_reporte(self):
         """Navega específicamente al reporte RGA."""
-        self._log(f"[{self.platform_name}] Navegando a {SALESYS_RGA_FORM_URL}")
+        print(f"[{self.platform_name}] Navegando a {SALESYS_RGA_FORM_URL}")
         self.driver.get(SALESYS_RGA_FORM_URL)
         # TODO: Añadir esperas (WebDriverWait) si la página tarda en cargar o necesita interacción inicial.
 
@@ -54,7 +54,7 @@ class RGAScraper(BaseSalesys):
         # 2. Hacer clic en el botón de exportar/descargar.
         # 3. Esperar a que la descarga se complete usando self.driver.esperar_descarga().
 
-        self._log(f"[{self.platform_name}] TODO: Implementar descarga para {self.reporte_nombre}")
+        print(f"[{self.platform_name}] TODO: Implementar descarga para {self.reporte_nombre}")
         # Placeholder: Retorna una ruta de archivo genérica para que el flujo no se rompa.
         return self.driver.download_dir / f"{self.reporte_nombre.lower()}.xlsx"
 
