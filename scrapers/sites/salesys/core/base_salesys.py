@@ -3,6 +3,7 @@
 # ====================================
 
 from scrapers.base.base_scraper import BaseScraper
+from abc import ABC, abstractmethod
 from .session_manager import get_salesys_session
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
