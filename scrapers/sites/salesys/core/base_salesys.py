@@ -45,7 +45,6 @@ class BaseSalesys(BaseScraper):
         Ya no crea un driver nuevo, reutiliza el del SessionManager.
         """
         self.driver = self.session_manager.get_driver(
-            temp_folder=f"./temp_scraping/salesys_{self.reporte_nombre.lower()}",
             log_fn=print
         )
         print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")

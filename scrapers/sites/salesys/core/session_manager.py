@@ -51,7 +51,7 @@ class SalesYsSessionManager(BaseSessionManager):
         """
         try:
             # Crear driver
-            self._driver = SeleniumDriver(download_dir=self._temp_folder)
+            self._driver = SeleniumDriver()
             self._log(f"[{self.platform_name}] Driver creado correctamente")
 
             # Intentar login con reintentos

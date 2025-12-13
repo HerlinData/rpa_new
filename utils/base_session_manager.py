@@ -33,7 +33,6 @@ class BaseSessionManager(ABC):
     _instance = None
     _driver = None
     _logged_in = False
-    _temp_folder = None
 
     def __new__(cls):
         """
@@ -44,7 +43,7 @@ class BaseSessionManager(ABC):
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def get_driver(self, temp_folder=None, log_fn=None):
+    def get_driver(self, log_fn=None):
         """
         Obtiene driver con sesión activa.
 
@@ -52,7 +51,6 @@ class BaseSessionManager(ABC):
         Si no, crea uno nuevo y realiza el login.
 
         Args:
-            temp_folder: Carpeta temporal para descargas (solo primera vez)
             log_fn: Función de logging personalizada (default: print)
 
         Returns:
@@ -70,11 +68,6 @@ class BaseSessionManager(ABC):
 
         # Primera vez: crear driver y hacer login
         self._log(f"[{self.platform_name}] Iniciando nueva sesión...")
-
-        # Setup temp folder
-        temp_folder_rel = temp_folder or f"./temp_scraping/{self.platform_name.lower()}_session"
-        self._temp_folder = os.path.abspath(temp_folder_rel)
-        os.makedirs(self._temp_folder, exist_ok=True)
 
         # Realizar login
         if not self._perform_login():
@@ -110,15 +103,6 @@ class BaseSessionManager(ABC):
         """
         pass
 
-    def get_temp_folder(self) -> str:
-        """
-        Obtiene la ruta de la carpeta temporal compartida.
-
-        Returns:
-            str: Ruta absoluta de la carpeta temporal
-        """
-        return self._temp_folder
-
     def is_logged_in(self) -> bool:
         """
         Verifica si hay una sesión activa.
@@ -144,18 +128,6 @@ class BaseSessionManager(ABC):
             finally:
                 self._driver = None
                 self._logged_in = False
-
-        # Limpiar carpeta temporal compartida
-        if self._temp_folder:
-            try:
-                temp_path = Path(self._temp_folder)
-                if temp_path.exists():
-                    shutil.rmtree(temp_path)
-                    self._log(f"[{self.platform_name}] Carpeta temporal eliminada: {self._temp_folder}")
-            except Exception as e:
-                # Silenciar errores durante shutdown de Python
-                if sys.meta_path is not None:
-                    self._log(f"[{self.platform_name}] ⚠ Error limpiando carpeta temporal: {e}")
 
     def _log(self, msg):
         """
