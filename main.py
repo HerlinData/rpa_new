@@ -6,7 +6,7 @@
 # Usa SessionManager para reutilizar sesiones y optimizar el tiempo
 
 from scrapers.sites.salesys.core.session_manager import get_salesys_session
-from scrapers.sites.salesys.reports.nomina import NominaScraper
+from scrapers.sites.salesys.reports.estado_agente_v2 import EstadoAgenteV2Scraper
 from scrapers.sites.salesys.reports.rga import RGAScraper
 
 
@@ -36,12 +36,12 @@ def ejecutar_scrapers_salesys():
 
     try:
         # ========================================
-        # SCRAPER 1: NÓMINA
+        # SCRAPER 1: ESTADO AGENTE V2
         # ========================================
-        print("\n[1/2] Ejecutando scraper de Nómina...")
-        nomina = NominaScraper(session_manager=session)
-        archivo_nomina = nomina.ejecutar()
-        print(f"✓ Nómina completada: {archivo_nomina}")
+        print("\n[1/2] Ejecutando scraper de Estado Agente V2...")
+        estado_agente_v2 = EstadoAgenteV2Scraper(session_manager=session)
+        archivo_estado_agente_v2 = estado_agente_v2.ejecutar()
+        print(f"✓ Estado Agente V2 completado: {archivo_estado_agente_v2}")
 
         # ========================================
         # SCRAPER 2: RGA
@@ -122,18 +122,18 @@ def ejecutar_proceso_completo():
         raise
 
 
-def ejecutar_solo_nomina():
+def ejecutar_solo_estado_agente_v2():
     """
-    Ejemplo: Ejecutar solo el scraper de Nómina.
+    Ejemplo: Ejecutar solo el scraper de Estado Agente V2.
 
     Útil para pruebas o ejecuciones individuales.
     """
-    print("Ejecutando solo scraper de Nómina...")
+    print("Ejecutando solo scraper de Estado Agente V2...")
 
     session = get_salesys_session()
     try:
-        nomina = NominaScraper(session_manager=session)
-        archivo = nomina.ejecutar()
+        estado_agente_v2 = EstadoAgenteV2Scraper(session_manager=session)
+        archivo = estado_agente_v2.ejecutar()
         print(f"✓ Completado: {archivo}")
     finally:
         session.cleanup()
@@ -168,15 +168,15 @@ if __name__ == "__main__":
 
         if comando == "salesys":
             ejecutar_scrapers_salesys()
-        elif comando == "nomina":
-            ejecutar_solo_nomina()
+        elif comando == "estado_agente_v2":
+            ejecutar_solo_estado_agente_v2()
         elif comando == "rga":
             ejecutar_solo_rga()
         else:
             print("Comandos disponibles:")
             print("  python main.py            - Ejecutar proceso completo")
             print("  python main.py salesys    - Solo scrapers de SalesYs")
-            print("  python main.py nomina     - Solo scraper de Nómina")
+            print("  python main.py estado_agente_v2 - Solo scraper de Estado Agente V2")
             print("  python main.py rga        - Solo scraper de RGA")
     else:
         # Por defecto: ejecutar proceso completo

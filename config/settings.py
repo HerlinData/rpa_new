@@ -21,14 +21,25 @@ _session_id = f"{_hostname}_{_timestamp}"
 
 DOWNLOADS_DIR = Path(tempfile.gettempdir()) / "rpa_downloads" / _session_id
 
-# Credenciales de plataformas
+# ====================================
+# CREDENCIALES WEBS Y URL LOGIN
+# ====================================
+### SALESYS
 SALESYS_USER = os.getenv("SALESYS_USER")
 SALESYS_PASS = os.getenv("SALESYS_PASS")
 SALESYS_URL = os.getenv("SALESYS_URL", "http://amgclaro.touscorp.com/SaleSys/index.php/config")
 
+### GENESYS
 GENESYS_USER = os.getenv("GENESYS_USER")
 GENESYS_PASS = os.getenv("GENESYS_PASS")
 GENESYS_URL = os.getenv("GENESYS_URL", "https://genesys.example.com/login")
+
+# ====================================
+# FORM URL de cada reporte
+# ====================================
+### SALESYS
+SALESYS_ESTADO_AGENTE_V2_FORM_URL = os.getenv("SALESYS_ESTADO_AGENTE_V2_FORM_URL", "http://amgclaro.touscorp.com/SaleSys/index.php/newstylereports/report_?id=259")
+SALESYS_RGA_FORM_URL = os.getenv("SALESYS_RGA_FORM_URL", "http://amgclaro.touscorp.com/SaleSys/index.php/generaldeatencionesreport/form")
 
 # Credenciales de base de datos
 DB_SERVER = os.getenv("DB_SERVER")

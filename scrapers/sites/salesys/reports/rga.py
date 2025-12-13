@@ -8,6 +8,7 @@ from scrapers.sites.salesys.core.base_salesys import BaseSalesys
 from selenium.webdriver.common.by import By
 from pathlib import Path
 import time
+from config.settings import SALESYS_RGA_FORM_URL
 
 
 class RGAScraper(BaseSalesys):
@@ -40,45 +41,22 @@ class RGAScraper(BaseSalesys):
     # ====================================
 
     def navegar_a_reporte(self):
-        """
-        Navega específicamente al reporte RGA.
-
-        TODO: Implementar navegación específica
-        Pasos:
-        1. Ir a módulo de reportes (usar helper)
-        2. Seleccionar categoría de RGA
-        3. Click en reporte RGA
-        4. Esperar formulario
-        """
-        # Usar helper compartido
-        self._ir_a_modulo_reportes()
-
-        # Navegación específica de RGA
-        # Ejemplo:
-        # self.driver.click(By.LINK_TEXT, "Gestión")
-        # self.driver.click(By.LINK_TEXT, "RGA")
-        # self.driver.esperar(By.ID, "form-rga", timeout=10)
-
-        print(f"[{self.platform_name}] TODO: Navegar específicamente a reporte RGA")
+        """Navega específicamente al reporte RGA."""
+        self._log(f"[{self.platform_name}] Navegando a {SALESYS_RGA_FORM_URL}")
+        self.driver.get(SALESYS_RGA_FORM_URL)
+        # TODO: Añadir esperas (WebDriverWait) si la página tarda en cargar o necesita interacción inicial.
 
     def descargar_archivo(self) -> Path:
-        """
-        Descarga el archivo de reporte RGA.
+        """Descarga el archivo del reporte RGA."""
+        # TODO: Implementar la lógica específica para descargar el archivo del reporte.
+        # Esto usualmente implica:
+        # 1. Seleccionar filtros/fechas (si aplica).
+        # 2. Hacer clic en el botón de exportar/descargar.
+        # 3. Esperar a que la descarga se complete usando self.driver.esperar_descarga().
 
-        TODO: Implementar descarga específica
-        Pasos:
-        1. Seleccionar fechas/filtros (si aplica)
-        2. Click en botón descargar
-        3. Esperar descarga
-        4. Retornar Path del archivo descargado
-        """
-        # Ejemplo:
-        # self.driver.click(By.ID, "btn-descargar-rga")
-        # archivo = self.driver.esperar_descarga(extension=".xlsx", timeout=60)
-        # return archivo
-
-        print(f"[{self.platform_name}] TODO: Descargar archivo RGA")
-        return self.driver.download_dir / "rga.xlsx"
+        self._log(f"[{self.platform_name}] TODO: Implementar descarga para {self.reporte_nombre}")
+        # Placeholder: Retorna una ruta de archivo genérica para que el flujo no se rompa.
+        return self.driver.download_dir / f"{self.reporte_nombre.lower()}.xlsx"
 
 
 # ====================================
