@@ -1,5 +1,5 @@
 # Utilidades compartidas
 
-from .selenium_config import SeleniumConfig
+from .selenium_driver import SeleniumDriver
 
-__all__ = ['SeleniumConfig']
+__all__ = ['SeleniumDriver']
