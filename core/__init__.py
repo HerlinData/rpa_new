@@ -1,0 +1,1 @@
+# Core - Componentes centrales
