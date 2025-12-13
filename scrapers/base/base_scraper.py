@@ -29,35 +29,38 @@ class BaseScraper(ABC):
     # ====================================
     # MÉTODO PRINCIPAL (Template Method)
     # ====================================
-    def ejecutar(self) -> Path:
+    def ejecutar(self, fechas: list, **kwargs):
         """
-        Ejecuta el flujo completo del scraper.
+        Ejecuta el flujo completo del scraper para una lista de fechas.
         """
         try:
             print(f"[{self.platform_name}] Iniciando scraper...")
 
-            # 1. Configurar driver
+            # 1. Configurar driver y hacer login una sola vez
             self.configurar_driver()
-
-            # 2. Login
             self.login()
 
-            # 3. Navegar al reporte
+            # 2. Navegar a la página del reporte una sola vez
             self.navegar_a_reporte()
 
-            # 4. Descargar archivo
-            ruta_archivo = self.descargar_archivo()
+            # 3. Iterar sobre cada fecha para descargar el reporte
+            for fecha in fechas:
+                print(f"\n--- Procesando fecha: {fecha} ---")
+                try:
+                    self.descargar_archivo(fecha=fecha, **kwargs)
+                except Exception as e:
+                    print(f"[{self.platform_name}] ✗ Error procesando fecha {fecha}: {e}")
+                    # Opcional: decidir si continuar con la siguiente fecha o detener todo
+                    # continue 
 
-            print(f"[{self.platform_name}] ✓ Scraper completado exitosamente")
-            print(f"[{self.platform_name}] ✓ Archivo guardado en: {ruta_archivo}")
-            return ruta_archivo
+            print(f"\n[{self.platform_name}] ✓ Proceso completado para todas las fechas.")
 
         except Exception as e:
-            print(f"[{self.platform_name}] ✗ Error: {str(e)}")
+            print(f"[{self.platform_name}] ✗ Error crítico durante la ejecución: {e}")
             raise
 
         finally:
-            # 5. Siempre cerrar driver
+            # 4. Siempre cerrar al final
             self.cerrar()
 
     # ====================================
@@ -96,8 +99,8 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    def descargar_archivo(self) -> Path:
+    def descargar_archivo(self, fecha, **kwargs) -> Path:
         """
-        TODO_EN SUBCLASE: Descargar el archivo de datos
+        TODO_EN SUBCLASE: Descargar el archivo de datos para una fecha específica.
         """
         pass

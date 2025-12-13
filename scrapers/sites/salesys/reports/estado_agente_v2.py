@@ -27,14 +27,97 @@ class EstadoAgenteV2Scraper(BaseSalesys):
         self.driver.get(SALESYS_ESTADO_AGENTE_V2_FORM_URL)
         # TODO: Añadir esperas (WebDriverWait) si la página tarda en cargar o necesita interacción inicial.
 
-    def descargar_archivo(self) -> Path:
-        """Descarga el archivo del reporte de Estado Agente V2."""
-        # TODO: Implementar la lógica específica para descargar el archivo del reporte.
-        # Esto usualmente implica:
-        # 1. Seleccionar filtros/fechas (si aplica).
-        # 2. Hacer clic en el botón de exportar/descargar.
-        # 3. Esperar a que la descarga se complete usando self.driver.esperar_descarga().
+    def descargar_archivo(self, fecha, **kwargs) -> Path:
+        """
+        Orquesta el proceso completo de llenado de formulario, envío y descarga del reporte para una fecha específica.
+        """
+        try:
+            # 1. Preparar fechas
+            from datetime import datetime
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d") if isinstance(fecha, str) else fecha
+            fecha_sistema = fecha_dt.strftime('%Y/%m/%d')
+            
+            # 2. Llenar fechas en el formulario
+            self.fill_dates(fecha_sistema)
 
-        print(f"[{self.platform_name}] TODO: Implementar descarga para {self.reporte_nombre}")
-        # Placeholder: Retorna una ruta de archivo genérica para que el flujo no se rompa.
-        return self.driver.download_dir / f"{self.reporte_nombre.lower()}.xlsx"
+            # 3. Llenar campos adicionales
+            self.fill_additional_fields(**kwargs)
+
+            # 4. Enviar formulario
+            self.submit_form()
+
+            # 5. Esperar y cambiar a la nueva pestaña de resultados
+            self.wait_for_results_tab()
+
+            # 6. Verificar si hay datos
+            no_data = self.check_no_data_conditions()
+            if no_data:
+                print(f"[{self.platform_name}] No se encontraron datos para la fecha {fecha}.")
+                self.return_to_form()
+                return # Salir de este proceso de fecha
+
+            # 7. Hacer clic en el botón de descarga y esperar
+            # (PLACEHOLDER - Se necesita el ID o selector real del botón)
+            download_button_selector = (By.CLASS_NAME, "download") # ¡AJUSTAR ESTE SELECTOR!
+            download_elem = self.driver.esperar(*download_button_selector, timeout=20)
+            download_elem.click()
+            
+            archivo_descargado = self.driver.esperar_descarga(extension=".xlsx", timeout=60) # Asumo .xlsx
+            
+            # 8. Procesar (renombrar y mover) el archivo descargado
+            self._process_file(archivo_descargado, fecha_dt, **kwargs)
+            
+            # 9. Regresar a la pestaña del formulario para la siguiente fecha
+            self.return_to_form()
+
+        except Exception as e:
+            print(f"[{self.platform_name}] Error durante el proceso de descarga para la fecha {fecha}: {e}")
+            self.return_to_form() # Intentar regresar al formulario para no bloquear el bucle
+            raise
+
+    # ====================================
+    # IMPLEMENTACIÓN DE MÉTODOS ABSTRACTOS DE BaseSalesys
+    # ====================================
+
+    def get_date_field_ids(self):
+        """
+        Retorna los IDs de los campos de fecha 'from' y 'to' para el formulario de Estado Agente V2.
+        """
+        return ("from", "to") # Valores obtenidos de scr_estado_agente.py
+    
+    def fill_additional_fields(self, **kwargs):
+        """
+        Implementa el llenado de campos adicionales para el formulario de Estado Agente V2.
+        Según scr_estado_agente.py, este reporte no tiene campos adicionales.
+        """
+        # Estado Agente no tiene campos adicionales
+        pass
+    
+    def generate_filename(self, fecha_dt, **kwargs):
+        """
+        Genera el nombre del archivo para el reporte de Estado Agente V2.
+        Ejemplo: "EstadoAgenteDD.xlsx"
+        """
+        dia = fecha_dt.strftime('%d')
+        return f"EstadoAgente{dia}"
+
+    def get_destination_paths(self, nuevo_nombre, fecha_dt, **kwargs):
+        """
+        Genera las rutas de destino para el archivo del reporte de Estado Agente V2.
+        Por ahora, usa una ruta base simplificada.
+        """
+        # Simplificado para no depender de FORM_ROUTES ni form_config
+        # Esto debería venir de la configuración del proyecto o ser configurable.
+        
+        # Ejemplo de ruta base, esto debería ser configurable (e.g., desde settings.py)
+        # Por ejemplo: Z:\INFORMES\EstadoAgenteV2\ANIO\MES\
+        base_path = Path("Z:/test")# Ojo: asegúrate de que esta ruta existe o se creará.
+
+        anio = fecha_dt.year
+        # Usar número de mes para evitar importar MESES_ES y mantener la simplicidad
+        mes_nombre = fecha_dt.strftime('%m') 
+
+        # Construir la ruta final
+        destination_folder = base_path / self.reporte_nombre / str(anio) / mes_nombre
+        
+        return [destination_folder / nuevo_nombre]

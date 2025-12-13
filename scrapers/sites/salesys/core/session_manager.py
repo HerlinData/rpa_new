@@ -20,11 +20,6 @@ import time
 class SalesYsSessionManager(BaseSessionManager):
     """
     Gestor de sesión para plataforma SalesYs.
-
-    Ventajas:
-    - Un solo login para todos los scrapers de SalesYs (Nómina, RGA, Ventas, etc.)
-    - Reutilización automática de sesión activa
-    - Reintentos automáticos de login si falla
     """
 
     @property
@@ -91,12 +86,5 @@ class SalesYsSessionManager(BaseSessionManager):
 def get_salesys_session():
     """
     Función helper para obtener la instancia singleton del SessionManager de SalesYs.
-
-    Returns:
-        SalesYsSessionManager: Instancia singleton del gestor de sesión
-
-    Ejemplo:
-        session = get_salesys_session()
-        driver = session.get_driver()
     """
     return SalesYsSessionManager()

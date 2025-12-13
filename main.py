@@ -12,24 +12,19 @@ from scrapers.sites.salesys.reports.rga import RGAScraper
 
 def ejecutar_scrapers_salesys():
     """
-    Ejecuta todos los scrapers de SalesYs.
-
-    Ventaja: Un solo login para todos los scrapers (ahorro ~67% de tiempo)
-
-    Sin SessionManager:
-    - NominaScraper: login (30s) + descarga (20s) = 50s
-    - RGAScraper: login (30s) + descarga (20s) = 50s
-    - Total: 100s
-
-    Con SessionManager:
-    - Login compartido: 30s
-    - NominaScraper: descarga (20s)
-    - RGAScraper: descarga (20s)
-    - Total: 70s ⚡ Ahorro: 30s (30%)
+    Ejecuta todos los scrapers de SalesYs para un rango de fechas.
     """
     print("=" * 60)
     print("EJECUTANDO SCRAPERS DE SALESYS")
     print("=" * 60)
+
+    # --- Definir el rango de fechas a procesar ---
+    # Ejemplo: procesar los últimos 2 días
+    from datetime import date, timedelta
+    hoy = date.today()
+    fechas_a_procesar = [(hoy - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(2)]
+    print(f"Rango de fechas a procesar: {fechas_a_procesar}")
+    # -----------------------------------------
 
     # Obtener instancia singleton del SessionManager
     session = get_salesys_session()
@@ -38,34 +33,27 @@ def ejecutar_scrapers_salesys():
         # ========================================
         # SCRAPER 1: ESTADO AGENTE V2
         # ========================================
-        print("\n[1/2] Ejecutando scraper de Estado Agente V2...")
+        print("\n[1/2] Iniciando scraper de Estado Agente V2...")
         estado_agente_v2 = EstadoAgenteV2Scraper(session_manager=session)
-        archivo_estado_agente_v2 = estado_agente_v2.ejecutar()
-        print(f"✓ Estado Agente V2 completado: {archivo_estado_agente_v2}")
+        estado_agente_v2.ejecutar(fechas=fechas_a_procesar)
+        print("✓ Proceso de Estado Agente V2 finalizado.")
 
         # ========================================
         # SCRAPER 2: RGA
         # ========================================
-        print("\n[2/2] Ejecutando scraper de RGA...")
+        print("\n[2/2] Iniciando scraper de RGA...")
         rga = RGAScraper(session_manager=session)
-        archivo_rga = rga.ejecutar()
-        print(f"✓ RGA completado: {archivo_rga}")
-
-        # ========================================
-        # PUEDES AGREGAR MÁS SCRAPERS DE SALESYS AQUÍ
-        # ========================================
-        # print("\n[3/N] Ejecutando scraper de Ventas...")
-        # ventas = VentasScraper(session_manager=session)
-        # archivo_ventas = ventas.ejecutar()
-        # print(f"✓ Ventas completado: {archivo_ventas}")
-
+        rga.ejecutar(fechas=fechas_a_procesar)
+        print("✓ Proceso de RGA finalizado.")
+        
         print("\n" + "=" * 60)
         print("✓ TODOS LOS SCRAPERS DE SALESYS COMPLETADOS")
         print("=" * 60)
 
     except Exception as e:
         print(f"\n✗ Error durante ejecución de scrapers de SalesYs: {e}")
-        raise
+        # No relanzar la excepción para permitir que el cleanup se ejecute
+        # raise
 
     finally:
         # IMPORTANTE: Cerrar sesión de SalesYs al finalizar TODOS los scrapers
@@ -76,12 +64,6 @@ def ejecutar_scrapers_salesys():
 def ejecutar_proceso_completo():
     """
     Ejecuta el proceso completo de RPA.
-
-    Incluye scrapers de todas las plataformas:
-    - SalesYs (Nómina, RGA, etc.)
-    - SAP (próximamente)
-    - Oracle (próximamente)
-    - etc.
     """
     print("\n")
     print("╔" + "═" * 58 + "╗")
@@ -95,17 +77,7 @@ def ejecutar_proceso_completo():
         # ========================================
         ejecutar_scrapers_salesys()
 
-        # ========================================
-        # PLATAFORMA 2: SAP (próximamente)
-        # ========================================
-        # print("\n")
-        # ejecutar_scrapers_sap()
-
-        # ========================================
-        # PLATAFORMA 3: ORACLE (próximamente)
-        # ========================================
-        # print("\n")
-        # ejecutar_scrapers_oracle()
+        # ... (otras plataformas)
 
         print("\n")
         print("╔" + "═" * 58 + "╗")
@@ -119,41 +91,37 @@ def ejecutar_proceso_completo():
         print("║" + " " * 12 + "✗ PROCESO FINALIZADO CON ERRORES" + " " * 14 + "║")
         print("╚" + "═" * 58 + "╝")
         print(f"\nError: {e}")
-        raise
+        # raise
 
 
 def ejecutar_solo_estado_agente_v2():
     """
-    Ejemplo: Ejecutar solo el scraper de Estado Agente V2.
-
-    Útil para pruebas o ejecuciones individuales.
+    Ejecuta solo el scraper de Estado Agente V2 para un rango de fechas.
     """
     print("Ejecutando solo scraper de Estado Agente V2...")
-
-    session = get_salesys_session()
-    try:
-        estado_agente_v2 = EstadoAgenteV2Scraper(session_manager=session)
-        archivo = estado_agente_v2.ejecutar()
-        print(f"✓ Completado: {archivo}")
-    finally:
-        session.cleanup()
+    from datetime import date, timedelta
+    hoy = date.today()
+    fechas_a_procesar = [(hoy - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(2)]
+    print(f"Rango de fechas a procesar: {fechas_a_procesar}")
+    
+    estado_agente_v2 = EstadoAgenteV2Scraper()
+    estado_agente_v2.ejecutar(fechas=fechas_a_procesar)
+    print("✓ Proceso de Estado Agente V2 finalizado.")
 
 
 def ejecutar_solo_rga():
     """
-    Ejemplo: Ejecutar solo el scraper de RGA.
-
-    Útil para pruebas o ejecuciones individuales.
+    Ejecuta solo el scraper de RGA para un rango de fechas.
     """
     print("Ejecutando solo scraper de RGA...")
+    from datetime import date, timedelta
+    hoy = date.today()
+    fechas_a_procesar = [(hoy - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(2)]
+    print(f"Rango de fechas a procesar: {fechas_a_procesar}")
 
-    session = get_salesys_session()
-    try:
-        rga = RGAScraper(session_manager=session)
-        archivo = rga.ejecutar()
-        print(f"✓ Completado: {archivo}")
-    finally:
-        session.cleanup()
+    rga = RGAScraper()
+    rga.ejecutar(fechas=fechas_a_procesar)
+    print("✓ Proceso de RGA finalizado.")
 
 
 # ====================================

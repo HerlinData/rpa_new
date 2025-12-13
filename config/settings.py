@@ -63,3 +63,11 @@ LOGIN_TIMEOUT = 15  # Segundos de espera para elementos de login
 # ====================================
 LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# ====================================
+# CONFIGURACIÓN DE FORMATOS Y NOMBRES
+# ====================================
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
