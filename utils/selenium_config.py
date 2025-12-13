@@ -6,6 +6,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from pathlib import Path
 from typing import Optional
+import logging
+import os
 from config.settings import DOWNLOADS_DIR, CHROME_OPTIONS
 
 # User-Agent realista para evitar detección de bots
@@ -64,6 +66,12 @@ class SeleniumConfig:
         }
         options.add_experimental_option("prefs", prefs)
 
+        # Silenciar logs de Chrome
+        options.add_experimental_option('excludeSwitches', ['enable-logging', 'enable-automation'])
+        options.add_argument('--log-level=3')  # Solo errores fatales
+        options.add_argument('--silent')
+        options.add_argument('--disable-logging')
+
         # Modo headless (sin interfaz gráfica)
         if self.headless:
             options.add_argument("--headless=new")
@@ -82,7 +90,6 @@ class SeleniumConfig:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
 
         # Deshabilitar notificaciones
@@ -95,15 +102,29 @@ class SeleniumConfig:
         Crea y retorna un WebDriver de Chrome configurado.
         """
         try:
+            # Silenciar logs de Selenium y WebDriver Manager
+            logging.getLogger('selenium').setLevel(logging.CRITICAL)
+            logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+            logging.getLogger('WDM').setLevel(logging.CRITICAL)
+            os.environ['WDM_LOG'] = '0'
+            os.environ['WDM_PRINT_FIRST_LINE'] = 'False'
+
             options = self._get_chrome_options()
 
-            # Crear servicio si se especificó ruta a chromedriver
+            # Crear servicio con logs silenciados
+            service_args = {
+                'log_output': os.devnull,  # Redirigir logs a null
+            }
+
             if self.chrome_driver_path:
-                service = Service(executable_path=self.chrome_driver_path)
-                driver = webdriver.Chrome(service=service, options=options)
+                service = Service(
+                    executable_path=self.chrome_driver_path,
+                    **service_args
+                )
             else:
-                # Usar chromedriver del PATH del sistema
-                driver = webdriver.Chrome(options=options)
+                service = Service(**service_args)
+
+            driver = webdriver.Chrome(service=service, options=options)
 
             # Configuraciones post-inicialización
             driver.implicitly_wait(10)  # Espera implícita de 10 segundos

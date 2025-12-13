@@ -7,6 +7,28 @@
 
 from utils.selenium_config import SeleniumConfig
 import time
+import warnings
+import logging
+import os
+import sys
+from contextlib import contextmanager
+
+# Silenciar warnings y logs
+warnings.filterwarnings("ignore")
+logging.basicConfig(level=logging.CRITICAL)
+os.environ['PYTHONWARNINGS'] = 'ignore'
+
+
+@contextmanager
+def suppress_stderr():
+    """Contexto para suprimir mensajes de stderr (errores de Chrome, DevTools, etc.)"""
+    original_stderr = sys.stderr
+    try:
+        sys.stderr = open(os.devnull, 'w')
+        yield
+    finally:
+        sys.stderr.close()
+        sys.stderr = original_stderr
 
 
 def test_default_config():
@@ -15,15 +37,19 @@ def test_default_config():
     print("TEST 1: Configuración por defecto")
     print("=" * 60)
 
-    driver = SeleniumConfig.create_default()
+    with suppress_stderr():
+        driver = SeleniumConfig.create_default()
 
-    # Navegar a Google
-    driver.get("https://www.google.com")
-    print(f"✓ Título de página: {driver.title}")
-    print(f"✓ URL actual: {driver.current_url}")
+        # Navegar a Google
+        driver.get("https://www.google.com")
+        title = driver.title
+        url = driver.current_url
 
-    time.sleep(2)
-    driver.quit()
+        time.sleep(2)
+        driver.quit()
+
+    print(f"✓ Título de página: {title}")
+    print(f"✓ URL actual: {url}")
     print("✓ Test completado\n")
 
 
@@ -33,14 +59,17 @@ def test_headless_mode():
     print("TEST 2: Modo Headless")
     print("=" * 60)
 
-    config = SeleniumConfig(headless=True)
-    driver = config.create_driver()
+    with suppress_stderr():
+        config = SeleniumConfig(headless=True)
+        driver = config.create_driver()
 
-    driver.get("https://www.python.org")
-    print(f"✓ Título de página: {driver.title}")
+        driver.get("https://www.python.org")
+        title = driver.title
+
+        driver.quit()
+
+    print(f"✓ Título de página: {title}")
     print(f"✓ Modo headless funcionando")
-
-    driver.quit()
     print("✓ Test completado\n")
 
 
@@ -53,13 +82,15 @@ def test_custom_download_dir():
     from pathlib import Path
     custom_dir = Path("./temp_downloads_test")
 
-    config = SeleniumConfig(download_dir=str(custom_dir))
-    driver = config.create_driver()
+    with suppress_stderr():
+        config = SeleniumConfig(download_dir=str(custom_dir))
+        driver = config.create_driver()
+        download_path = config.download_dir
+        dir_exists = custom_dir.exists()
+        driver.quit()
 
-    print(f"✓ Directorio de descargas: {config.download_dir}")
-    print(f"✓ Directorio existe: {custom_dir.exists()}")
-
-    driver.quit()
+    print(f"✓ Directorio de descargas: {download_path}")
+    print(f"✓ Directorio existe: {dir_exists}")
 
     # Limpiar directorio de prueba
     if custom_dir.exists():
