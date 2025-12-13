@@ -6,10 +6,9 @@
 
 from abc import ABC, abstractmethod
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from pathlib import Path
+from utils.selenium_config import SeleniumConfig
 
 
 class BaseScraper(ABC):
@@ -88,21 +87,22 @@ class BaseScraper(ABC):
     # ====================================
     def configurar_driver(self):
         """
-        TODO: Configurar Chrome WebDriver
+        Configura Chrome WebDriver usando SeleniumConfig.
 
-        Ejemplo:
-            options = Options()
-            options.add_argument("--start-maximized")
-            self.driver = webdriver.Chrome(options=options)
+        Las subclases pueden sobreescribir este método si necesitan
+        configuraciones específicas de driver.
         """
-        pass
+        selenium_config = SeleniumConfig()
+        self.driver = selenium_config.create_driver()
+        print(f"[{self.platform_name}] ✓ Navegador configurado y listo")
 
     def cerrar(self):
         """
-        TODO: Cerrar el navegador
+        Cierra el navegador si está abierto.
         """
         if self.driver:
             self.driver.quit()
+            print(f"[{self.platform_name}] ✓ Navegador cerrado")
 
     # ====================================
     # MÉTODOS ABSTRACTOS (a implementar en subclases)
