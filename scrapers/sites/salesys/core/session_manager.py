@@ -14,6 +14,8 @@ from config.settings import (
     LOGIN_TIMEOUT
 )
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 
 
@@ -29,7 +31,7 @@ class SalesYsSessionManager(BaseSessionManager):
 
     def _perform_login(self) -> bool:
         """
-        Login específico de SalesYs con reintentos.
+        Login específico de SalesYs con reintentos y verificación.
         """
         try:
             # Crear driver
@@ -43,28 +45,39 @@ class SalesYsSessionManager(BaseSessionManager):
                 try:
                     # Navegar a página de login
                     self._driver.get(SALESYS_URL)
-                    self._log(f"[{self.platform_name}] Navegando a {SALESYS_URL}")
-
+                    
                     # Implementación de login de Salesys
-                    self._driver.get(SALESYS_URL)
                     self._driver.find_element(By.ID, "extension").clear()
-                    self._driver.find_element(By.ID, "extension").send_keys("4271") # Hardcoded extension from user's code
+                    self._driver.find_element(By.ID, "extension").send_keys("4271") # Hardcoded
                     self._driver.find_element(By.ID, "deviceName").clear()
-                    self._driver.find_element(By.ID, "deviceName").send_keys("PC4271") # Hardcoded device from user's code
+                    self._driver.find_element(By.ID, "deviceName").send_keys("PC4271") # Hardcoded
                     self._driver.find_element(By.ID, "submitButton").click()
+                    
+                    # Esperar a que aparezca el formulario de usuario/pass
+                    WebDriverWait(self._driver, LOGIN_TIMEOUT).until(
+                        EC.visibility_of_element_located((By.ID, "slt-userName"))
+                    )
+
                     self._driver.find_element(By.ID, "slt-userName").clear()
                     self._driver.find_element(By.ID, "slt-userName").send_keys(SALESYS_USER)
                     self._driver.find_element(By.ID, "slt-userPass").clear()
                     self._driver.find_element(By.ID, "slt-userPass").send_keys(SALESYS_PASS)
                     self._driver.find_element(By.XPATH, "//input[@type='submit']").click()
-                    time.sleep(2.2)
-                    self._driver.refresh()
-                    time.sleep(1.1)
+                    
+                    # --- VERIFICACIÓN DE LOGIN ---
+                    # Esperar un momento para que la página reaccione
+                    time.sleep(3) 
 
-                    # Si llegaste hasta aquí sin excepciones, login exitoso
-                    self._logged_in = True
-                    self._log(f"[{self.platform_name}] ✓ Login exitoso")
-                    return True
+                    # Verificar si el login fue exitoso. Si el campo de usuario aún existe, falló.
+                    try:
+                        self._driver.find_element(By.ID, "slt-userName")
+                        # Si encuentra el elemento, el login falló. Forzamos un error para reintentar.
+                        raise Exception("Credenciales inválidas o la página de login no cambió.")
+                    except:
+                        # Si NO encuentra el elemento, el login fue exitoso.
+                        self._logged_in = True
+                        self._log(f"[{self.platform_name}] ✓ Login verificado y exitoso")
+                        return True
 
                 except Exception as e:
                     self._log(f"[{self.platform_name}] ⚠ Intento #{attempt + 1} fallido: {e}")
