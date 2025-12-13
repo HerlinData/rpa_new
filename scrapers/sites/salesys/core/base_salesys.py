@@ -4,6 +4,7 @@
 
 from scrapers.base.base_scraper import BaseScraper
 from abc import ABC, abstractmethod
+from pathlib import Path
 from .session_manager import get_salesys_session
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -200,26 +201,6 @@ class BaseSalesys(BaseScraper):
     # ====================================
     # MÉTODOS ABSTRACTOS (a implementar en subclases)
     # ====================================
-    @abstractmethod
-    def login(self):
-        """
-        TODO_EN SUBCLASE: Implementar lógica de login específica de cada plataforma
-        """
-        pass
-
-    @abstractmethod
-    def navegar_a_reporte(self):
-        """
-        TODO_EN SUBCLASE: Navegar al reporte específico
-        """
-        pass
-
-    @abstractmethod
-    def descargar_archivo(self) -> Path:
-        """
-        TODO_EN SUBCLASE: Descargar el archivo de datos
-        """
-        pass
 
     @abstractmethod
     def get_date_field_ids(self):
