@@ -112,17 +112,37 @@ class BaseSalesys(BaseScraper):
         print(f"[{self.platform_name}] Formulario enviado.")
     
     def wait_for_results_tab(self):
-        """Espera y cambia a la pestaña de resultados"""
+        """Espera y cambia a la pestaña de resultados, con diagnóstico mejorado."""
+        print(f"[{self.platform_name}] Esperando nueva pestaña... (Pestañas actuales: {len(self.driver.window_handles)})")
+        print(f"[{self.platform_name}] URL actual antes de la espera: {self.driver.current_url}")
+
         t5b_start = time.time()
         timeout_new_tab = 30
         
-        while len(self.driver.window_handles) <= 2 and time.time() - t5b_start < timeout_new_tab:
-            WebDriverWait(self.driver, 2).until(lambda d: True)
+        while time.time() - t5b_start < timeout_new_tab:
+            if len(self.driver.window_handles) > 2: # Asumiendo 2 pestañas: original + formulario
+                self.driver.switch_to.window(self.driver.window_handles[-1])
+                print(f"[{self.platform_name}] Nueva pestaña detectada. URL: {self.driver.current_url}")
+                return
+            time.sleep(1)
         
-        if len(self.driver.window_handles) > 2:
-            self.driver.switch_to.window(self.driver.window_handles[-1])
-        else:
-            raise TimeoutException("No se abrió la pestaña de resultados en tiempo")
+        # --- INICIO DE DIAGNÓSTICO DE TIMEOUT ---
+        print(f"[{self.platform_name}] [DIAGNÓSTICO] Timeout. No se abrió una nueva pestaña.")
+        try:
+            num_handles = len(self.driver.window_handles)
+            current_url = self.driver.current_url
+            print(f"[{self.platform_name}] [DIAGNÓSTICO] Pestañas al final: {num_handles}")
+            print(f"[{self.platform_name}] [DIAGNÓSTICO] URL final: {current_url}")
+            
+            # Guardar captura de pantalla para depuración
+            screenshot_path = f"debug_timeout_{self.reporte_nombre}.png"
+            self.driver.save_screenshot(screenshot_path)
+            print(f"[{self.platform_name}] [DIAGNÓSTICO] Captura de pantalla guardada en: {screenshot_path}")
+        except Exception as diag_e:
+            print(f"[{self.platform_name}] [DIAGNÓSTICO] Error adicional durante el diagnóstico: {diag_e}")
+        # --- FIN DE DIAGNÓSTICO ---
+
+        raise TimeoutException("No se abrió la pestaña de resultados en tiempo")
     
     def check_no_data_conditions(self):
         """
