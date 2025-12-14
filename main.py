@@ -40,8 +40,7 @@ def ejecutar_scrapers_salesys():
 
         # ========================================
         # SCRAPER 2: RGA
-        # ========================================
-        print("\n[2/2] Iniciando scraper de RGA...")
+        # ========================================)
         rga = RGAScraper(session_manager=session)
         rga.ejecutar(fechas=fechas_a_procesar)
         print("✓ Proceso de RGA finalizado.")
@@ -65,31 +64,15 @@ def ejecutar_proceso_completo():
     """
     Ejecuta el proceso completo de RPA.
     """
-    print("\n")
-    print("╔" + "═" * 58 + "╗")
-    print("║" + " " * 15 + "PROCESO RPA INICIADO" + " " * 23 + "║")
-    print("╚" + "═" * 58 + "╝")
-    print()
-
     try:
         # ========================================
         # PLATAFORMA 1: SALESYS
         # ========================================
         ejecutar_scrapers_salesys()
 
-        # ... (otras plataformas)
-
-        print("\n")
-        print("╔" + "═" * 58 + "╗")
-        print("║" + " " * 10 + "✓ PROCESO COMPLETO FINALIZADO" + " " * 18 + "║")
-        print("╚" + "═" * 58 + "╝")
-        print()
-
     except Exception as e:
         print("\n")
-        print("╔" + "═" * 58 + "╗")
         print("║" + " " * 12 + "✗ PROCESO FINALIZADO CON ERRORES" + " " * 14 + "║")
-        print("╚" + "═" * 58 + "╝")
         print(f"\nError: {e}")
         # raise
 

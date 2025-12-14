@@ -1,7 +1,3 @@
-# ====================================
-# BASE SALESYS - Login y navegación compartida
-# ====================================
-
 from scrapers.base.base_scraper import BaseScraper
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -19,7 +15,6 @@ from datetime import datetime
 class BaseSalesys(BaseScraper):
     """
     Clase base para todos los scrapers de Salesys.
-    Implementa el flujo principal y la lógica común para descargar reportes.
     """
 
     def __init__(self, reporte_nombre: str, session_manager=None):
@@ -46,16 +41,27 @@ class BaseSalesys(BaseScraper):
         # Navegar a la página del reporte una sola vez
         self.navegar_a_reporte()
 
+        # Limpiar kwargs para evitar duplicados (fechas ya se pasa explícitamente)
+        kwargs_clean = {k: v for k, v in kwargs.items() if k != 'fechas'}
+
         # Obtener la lista de "unidades de trabajo" (cada scraper la define)
-        work_items = self._get_work_items(fechas=fechas, **kwargs)
+        work_items = self._get_work_items(fechas=fechas, **kwargs_clean)
 
         # Iterar sobre cada unidad de trabajo para descargar el reporte
         for item in work_items:
-            print(f"\n--- Procesando unidad de trabajo: {item} ---")
+            # Formatear el item para display más limpio
+            if isinstance(item, tuple):
+                # RGA: (fecha, producto)
+                display_item = f"{item[0]} - {item[1]}"
+            else:
+                # Estado Agente: solo fecha
+                display_item = str(item)
+
+            print(f"\n[{display_item}]")
             try:
                 self._descargar_para_item(item)
             except Exception as e:
-                print(f"[ERROR] Falló la unidad de trabajo {item}: {e}")
+                print(f"  ✗ Error: {e}")
                 # Opcional: decidir si continuar con la siguiente unidad o detener todo
                 continue 
 
@@ -95,7 +101,7 @@ class BaseSalesys(BaseScraper):
             # 6. Verificar si no hay datos
             no_data = self.check_no_data_conditions()
             if no_data:
-                print(f"No se encontraron datos para {work_item}.")
+                print(f"  ⓘ Sin datos")
                 self.return_to_form()
                 return
 
@@ -115,7 +121,7 @@ class BaseSalesys(BaseScraper):
             self.return_to_form()
 
         except Exception as e:
-            print(f"[ERROR] Error en la descarga para {work_item}: {e}")
+            print(f"  ✗ Error en descarga: {e}")
             self.return_to_form() # Intentar volver al formulario para no romper el bucle
             # No relanzamos el error para permitir que el bucle principal continúe
             # raise
@@ -124,26 +130,25 @@ class BaseSalesys(BaseScraper):
     # --- MÉTODOS DE AYUDA (LÓGICA COMÚN) ---
     # =================================================
     
-    
     def configurar_driver(self):
         """
         Obtiene driver con sesión activa del SessionManager.
         """
-        print("--- ¡ESTOY USANDO EL CONFIGURAR_DRIVER CORRECTO DE BASESALESYS! ---")
         self.driver = self.session_manager.get_driver(log_fn=print)
-        print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")
 
     def login(self):
         if not self.session_manager.is_logged_in():
             raise Exception(f"[{self.platform_name}] Sesión no establecida")
-        print(f"[{self.platform_name}] ✓ Sesión activa verificada")
 
     def navegar_a_reporte(self):
-        print(f"[{self.platform_name}] Navegando a {self.form_url}")
         self.driver.execute_script(f"window.open('{self.form_url}');")
         # Esperar a que haya 2 pestañas: la original y la del formulario
         WebDriverWait(self.driver, 30).until(lambda d: len(d.window_handles) >= 2)
         self.driver.switch_to.window(self.driver.window_handles[-1])
+
+        # Guardar referencia a la pestaña del formulario actual
+        self._form_window_handle = self.driver.current_window_handle
+
         time.sleep(2)
 
     def fill_dates(self, fecha_sistema):
@@ -165,14 +170,11 @@ class BaseSalesys(BaseScraper):
     
     def submit_form(self):
         self.driver.click(By.ID, "subreport", timeout=30)
-        print(f"[{self.platform_name}] Formulario enviado.")
-    
+
     def wait_for_results_tab(self):
-        print(f"[{self.platform_name}] Esperando pestaña de resultados...")
         # Esperar a que haya 3 pestañas: original, formulario, y resultados
         WebDriverWait(self.driver, 30).until(lambda d: len(d.window_handles) >= 3)
         self.driver.switch_to.window(self.driver.window_handles[-1])
-        print(f"[{self.platform_name}] Nueva pestaña de resultados detectada.")
     
     def check_no_data_conditions(self):
         try:
@@ -194,7 +196,13 @@ class BaseSalesys(BaseScraper):
         # La pestaña de resultados se cierra, volvemos a la del formulario
         if len(self.driver.window_handles) > 2:
              self.driver.close() # Cierra la pestaña actual (resultados)
-        self.driver.switch_to.window(self.driver.window_handles[1])
+
+        # Volver a la pestaña del formulario específica de este scraper
+        if hasattr(self, '_form_window_handle'):
+            self.driver.switch_to.window(self._form_window_handle)
+        else:
+            # Fallback a comportamiento anterior si no hay referencia guardada
+            self.driver.switch_to.window(self.driver.window_handles[1])
 
     def _process_file(self, archivo_descargado, fecha_dt, **kwargs):
         if not archivo_descargado:
@@ -215,12 +223,28 @@ class BaseSalesys(BaseScraper):
                     shutil.move(new_path, dest)
                 else:
                     shutil.copy2(destinos[0], dest)
-                print(f"✓ Archivo procesado y movido a: {dest}")
+                # Mostrar solo el nombre del archivo, no la ruta completa
+                print(f"  ✓ {nuevo_nombre}")
             except Exception as e:
-                print(f"[ERROR] No se pudo mover/copiar el archivo a '{dest}': {e}")
+                print(f"  ✗ Error moviendo archivo: {e}")
     
     def cerrar(self):
-        print(f"[{self.platform_name}] ℹ Scraper finalizado, driver permanece activo para otros scrapers.")
+        """
+        Cierra la pestaña del formulario de este scraper.
+        El driver permanece activo para otros scrapers.
+        """
+        # Cerrar la pestaña del formulario de este scraper
+        if hasattr(self, '_form_window_handle'):
+            try:
+                # Cambiar a la pestaña del formulario y cerrarla
+                self.driver.switch_to.window(self._form_window_handle)
+                self.driver.close()
+
+                # Volver a la pestaña principal (login)
+                if len(self.driver.window_handles) > 0:
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+            except Exception as e:
+                print(f"[{self.platform_name}] [WARNING] No se pudo cerrar la pestaña: {e}")
 
     # =======================================================================
     # -- MÉTODOSABSTRACTOS (a ser implementados por los scrapers hijos) --

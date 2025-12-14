@@ -15,16 +15,15 @@ def renombrar_archivo(old_path, new_path, log_fn=print):
     for attempt in range(3):
         try:
             if os.path.exists(new_path):
-                log_fn(f"Archivo '{new_path}' ya existe, será sobreescrito.")
                 os.remove(new_path)
-            
+
             os.rename(old_path, new_path)
-            log_fn(f"Archivo renombrado de '{old_path}' a '{new_path}'")
+            # Log silencioso: renombrado exitoso sin imprimir
             return True
         except Exception as e:
-            log_fn(f"Error renombrando archivo (intento {attempt + 1}): {e}")
+            if attempt == 2:  # Solo mostrar error en el último intento
+                log_fn(f"[ERROR] No se pudo renombrar archivo: {e}")
             time.sleep(1)
-    log_fn(f"Fallo al renombrar '{old_path}' después de varios intentos.")
     return False
 
 def limpiar_sesiones_antiguas(dias: int = 7):

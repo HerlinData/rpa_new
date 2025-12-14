@@ -5,11 +5,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from pathlib import Path
 import time
 from config.settings import SALESYS_RGA_FORM_URL, PRODUCTOS_DEFAULT
+from utils.route_builder import build_destination_paths, build_filename
 
 class RGAScraper(BaseSalesys):
 
     def __init__(self, productos=None, session_manager=None):
-        super().__init__(reporte_nombre="RGA", session_manager=session_manager)
+        super().__init__(reporte_nombre="rga", session_manager=session_manager)
         self.productos = productos or PRODUCTOS_DEFAULT
 
     @property
@@ -31,31 +32,15 @@ class RGAScraper(BaseSalesys):
                 EC.element_to_be_clickable((By.XPATH, f"//li[contains(text(), '{producto}')]"))
             ).click()
 
-            print(f"[{self.platform_name}] Producto seleccionado: {producto}")
             time.sleep(0.5)  # Breve pausa para que se registre la selección
 
     def generate_filename(self, fecha_dt, producto=None, **kwargs):
-        dia = fecha_dt.strftime('%d')
-        if producto:
-            return f"{producto.lower()}{dia}"
-        else:
-            return f"rga{dia}"
+        """Genera el nombre del archivo desde configuración YAML"""
+        return build_filename(self.reporte_nombre, fecha_dt, producto=producto, **kwargs)
 
     def get_destination_paths(self, nuevo_nombre, fecha_dt, producto=None, **kwargs):
-        """
-        Genera las rutas de destino para el archivo del reporte RGA.
-        """
-        base_path = Path("Z:/test")
-        anio = fecha_dt.year
-        mes_nombre = fecha_dt.strftime('%m')  # Número de mes: 01, 02, etc.
-
-        # Si hay producto, crear subcarpeta por producto
-        if producto:
-            destination_folder = base_path / self.reporte_nombre / producto.upper() / str(anio) / mes_nombre
-        else:
-            destination_folder = base_path / self.reporte_nombre / str(anio) / mes_nombre
-
-        return [destination_folder / nuevo_nombre]
+        """Genera las rutas de destino desde configuración YAML"""
+        return build_destination_paths(self.reporte_nombre, fecha_dt, producto=producto, **kwargs)
 
     def _get_work_items(self, fechas, **kwargs) -> list:
         work_items = []

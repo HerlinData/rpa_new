@@ -7,6 +7,8 @@ import socket
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+import yaml
+
 load_dotenv()
 
 # ====================================
@@ -74,3 +76,19 @@ MESES_ES = {
 
 # Productos para RGA (ajustar según necesidad)
 PRODUCTOS_DEFAULT = ["DELIVERY", "HFC"]  # Lista de productos a descargar en RGA
+
+# ====================================
+# RUTAS DE ARCHIVOS (desde YAML)
+# ====================================
+FILE_ROUTES_PATH = BASE_DIR / "config" / "file_routes.yaml"
+
+def load_file_routes():
+    """Carga configuración de rutas desde YAML"""
+    if FILE_ROUTES_PATH.exists():
+        with open(FILE_ROUTES_PATH, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    else:
+        print(f"[WARNING] No se encontró {FILE_ROUTES_PATH}, usando rutas por defecto")
+        return {}
+
+FILE_ROUTES = load_file_routes()
