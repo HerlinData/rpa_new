@@ -29,38 +29,26 @@ class BaseScraper(ABC):
     # ====================================
     # MÉTODO PRINCIPAL (Template Method)
     # ====================================
-    def ejecutar(self, fechas: list, **kwargs):
+    def ejecutar(self, **kwargs):
         """
-        Ejecuta el flujo completo del scraper para una lista de fechas.
+        Ejecuta el flujo completo del scraper.
+        Maneja la configuración y limpieza.
+        El flujo principal de trabajo se delega a _run_main_flow.
         """
         try:
             print(f"[{self.platform_name}] Iniciando scraper...")
-
-            # 1. Configurar driver y hacer login una sola vez
             self.configurar_driver()
             self.login()
+            
+            self._run_main_flow(**kwargs)
 
-            # 2. Navegar a la página del reporte una sola vez
-            self.navegar_a_reporte()
-
-            # 3. Iterar sobre cada fecha para descargar el reporte
-            for fecha in fechas:
-                print(f"\n--- Procesando fecha: {fecha} ---")
-                try:
-                    self.descargar_archivo(fecha=fecha, **kwargs)
-                except Exception as e:
-                    print(f"[{self.platform_name}] ✗ Error procesando fecha {fecha}: {e}")
-                    # Opcional: decidir si continuar con la siguiente fecha o detener todo
-                    # continue 
-
-            print(f"\n[{self.platform_name}] ✓ Proceso completado para todas las fechas.")
+            print(f"\n[{self.platform_name}] ✓ Proceso de scraper completado.")
 
         except Exception as e:
             print(f"[{self.platform_name}] ✗ Error crítico durante la ejecución: {e}")
             raise
 
         finally:
-            # 4. Siempre cerrar al final
             self.cerrar()
 
     # ====================================
@@ -70,6 +58,9 @@ class BaseScraper(ABC):
         """
         Configura Chrome WebDriver usando SeleniumDriver.
         """
+        # La importación se hace aquí para evitar importaciones circulares
+        # si SeleniumDriver necesitara algo de los scrapers en el futuro.
+        from utils.selenium_driver import SeleniumDriver
         self.driver = SeleniumDriver()
         print(f"[{self.platform_name}] ✓ Navegador configurado y listo")
 
@@ -92,15 +83,9 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    def navegar_a_reporte(self):
+    def _run_main_flow(self, **kwargs):
         """
-        TODO_EN SUBCLASE: Navegar al reporte específico
-        """
-        pass
-
-    @abstractmethod
-    def descargar_archivo(self, fecha, **kwargs) -> Path:
-        """
-        TODO_EN SUBCLASE: Descargar el archivo de datos para una fecha específica.
+        Contiene el flujo principal del trabajo del scraper (ej. bucles, llamadas a descarga).
+        Debe ser implementado por una clase base de plataforma (como BaseSalesys).
         """
         pass

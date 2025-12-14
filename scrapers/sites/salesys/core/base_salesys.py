@@ -16,9 +16,12 @@ import shutil
 from utils.file_system import renombrar_archivo
 
 
+from datetime import datetime
+
 class BaseSalesys(BaseScraper):
     """
     Clase base para todos los scrapers de Salesys.
+    Implementa el flujo principal y la lógica común para descargar reportes.
     """
 
     def __init__(self, reporte_nombre: str, session_manager=None):
@@ -29,227 +32,232 @@ class BaseSalesys(BaseScraper):
         self.reporte_nombre = reporte_nombre
         self.session_manager = session_manager or get_salesys_session()
 
-    # ====================================
-    # IMPLEMENTACIÓN COMÚN (para TODOS los scrapers de Salesys)
-    # ====================================
+    # =================================================
+    # --- IMPLEMENTACIÓN DEL FLUJO PRINCIPAL (TEMPLATE) ---
+    # =================================================
 
-    def configurar_driver(self):
+    def _run_main_flow(self, **kwargs):
         """
-        Obtiene driver con sesión activa del SessionManager.
-        Ya no crea un driver nuevo, reutiliza el del SessionManager.
+        Implementa el flujo de trabajo principal para los scrapers de Salesys.
+        Este método es llamado por el `ejecutar` de la clase base.
         """
-        self.driver = self.session_manager.get_driver(
-            log_fn=print
-        )
-        print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")
+        fechas = kwargs.get('fechas')
+        if not fechas:
+            raise ValueError("El método 'ejecutar' debe ser llamado con el argumento 'fechas'.")
+
+        # Navegar a la página del reporte una sola vez
+        self.navegar_a_reporte()
+
+        # Obtener la lista de "unidades de trabajo" (cada scraper la define)
+        work_items = self._get_work_items(fechas=fechas, **kwargs)
+
+        # Iterar sobre cada unidad de trabajo para descargar el reporte
+        for item in work_items:
+            print(f"\n--- Procesando unidad de trabajo: {item} ---")
+            try:
+                self._descargar_para_item(item)
+            except Exception as e:
+                print(f"[ERROR] Falló la unidad de trabajo {item}: {e}")
+                # Opcional: decidir si continuar con la siguiente unidad o detener todo
+                continue 
+
+    # =================================================
+    # --- ORQUESTACIÓN DE DESCARGA PARA UN SOLO ITEM ---
+    # =================================================
+
+    def _descargar_para_item(self, work_item):
+        """
+        Orquesta la secuencia completa de descarga para una única unidad de trabajo.
+        """
+        # 1. Desempaquetar la unidad de trabajo
+        # Para scrapers simples, es solo la fecha. Para RGA, es (fecha, producto).
+        if isinstance(work_item, tuple):
+            fecha = work_item[0]
+            # Convertir el resto de la tupla en un diccionario de kwargs
+            item_kwargs = {'producto': work_item[1]} # Asume que el segundo item es 'producto'
+        else:
+            fecha = work_item
+            item_kwargs = {}
+            
+        # 2. Preparar fechas para el formulario
+        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d") if isinstance(fecha, str) else fecha
+        fecha_sistema = fecha_dt.strftime('%Y/%m/%d')
+        
+        try:
+            # 3. Llenar el formulario con los datos del item
+            self.fill_dates(fecha_sistema)
+            self.fill_additional_fields(**item_kwargs)
+
+            # 4. Enviar formulario
+            self.submit_form()
+
+            # 5. Esperar pestaña de resultados
+            self.wait_for_results_tab()
+
+            # 6. Verificar si no hay datos
+            no_data = self.check_no_data_conditions()
+            if no_data:
+                print(f"No se encontraron datos para {work_item}.")
+                self.return_to_form()
+                return
+
+            # 7. Descargar el archivo
+            download_button_selector = (By.CLASS_NAME, "download") # Asunción genérica
+            download_elem = self.driver.esperar(*download_button_selector, timeout=20)
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", download_elem)
+            download_elem.click()
+            
+            # Asumimos .csv basado en implementaciones anteriores
+            archivo_descargado = self.driver.esperar_descarga(extension=".csv", timeout=60)
+            
+            # 8. Procesar el archivo (renombrar y mover)
+            self._process_file(archivo_descargado, fecha_dt, **item_kwargs)
+            
+            # 9. Volver al formulario para el siguiente item
+            self.return_to_form()
+
+        except Exception as e:
+            print(f"[ERROR] Error en la descarga para {work_item}: {e}")
+            self.return_to_form() # Intentar volver al formulario para no romper el bucle
+            # No relanzamos el error para permitir que el bucle principal continúe
+            # raise
+
+    # =================================================
+    # --- MÉTODOS DE AYUDA (LÓGICA COMÚN) ---
+    # =================================================
 
     def login(self):
-        """
-        Login ya manejado por SessionManager.
-        """
         if not self.session_manager.is_logged_in():
             raise Exception(f"[{self.platform_name}] Sesión no establecida")
-        print(f"[{self.platform_name}] ✓ Sesión activa verificada para {self.reporte_nombre}")
+        print(f"[{self.platform_name}] ✓ Sesión activa verificada")
 
-    def cerrar(self):
-        """
-        NO cierra el driver (lo maneja SessionManager al final).
-        """
-        print(f"[{self.platform_name}] ℹ Driver permanece activo para otros scrapers")
-        # NOTA: El cleanup del driver se hace en el SessionManager con session.cleanup()
-
-    def _ir_a_modulo_reportes(self):
-        """
-        Helper: Navega al módulo de reportes de Salesys.
-        """
-        # Ejemplo:
-        # self.driver.click(By.LINK_TEXT, "Reportes")
-        # self.driver.esperar(By.ID, "modulo-reportes", timeout=10)
-
-        print(f"[{self.platform_name}] TODO: Navegar a módulo de reportes")
+    def navegar_a_reporte(self):
+        print(f"[{self.platform_name}] Navegando a {self.form_url}")
+        self.driver.execute_script(f"window.open('{self.form_url}');")
+        # Esperar a que haya 2 pestañas: la original y la del formulario
+        WebDriverWait(self.driver, 30).until(lambda d: len(d.window_handles) >= 2)
+        self.driver.switch_to.window(self.driver.window_handles[-1])
+        time.sleep(2)
 
     def fill_dates(self, fecha_sistema):
-        """Llena los campos de fecha del formulario"""
         from_id, to_id = self.get_date_field_ids()
-        
-        # Llenar fecha FROM
-        fecha_from = WebDriverWait(self.driver, 30).until(
-            EC.presence_of_element_located((By.ID, from_id))
-        )
+        fecha_from = self.driver.esperar(By.ID, from_id, timeout=30)
         fecha_from.clear()
         fecha_from.send_keys(fecha_sistema)
-        
-        # Llenar fecha TO
-        fecha_to = WebDriverWait(self.driver, 30).until(
-            EC.presence_of_element_located((By.ID, to_id))
-        )
+        fecha_to = self.driver.esperar(By.ID, to_id, timeout=30)
         fecha_to.clear()
         fecha_to.send_keys(fecha_sistema)
-        
-        # Ocultar calendario flotante
         self._hide_datepicker()
     
     def _hide_datepicker(self):
-        """Oculta el calendario flotante jQuery UI"""
-        for _ in range(3):
-            try:
-                calendar = WebDriverWait(self.driver, 1).until(
-                    EC.visibility_of_element_located((By.CLASS_NAME, "ui-datepicker"))
-                )
-                self.driver.execute_script("arguments[0].style.display = 'none';", calendar)
-                WebDriverWait(self.driver, 1).until_not(
-                    EC.visibility_of_element_located((By.CLASS_NAME, "ui-datepicker"))
-                )
-                break
-            except TimeoutException:
-                break
+        try:
+            calendar = WebDriverWait(self.driver, 1).until(EC.visibility_of_element_located((By.CLASS_NAME, "ui-datepicker")))
+            self.driver.execute_script("arguments[0].style.display = 'none';", calendar)
+        except TimeoutException:
+            pass
     
     def submit_form(self):
-        """Envía el formulario haciendo click en el botón submit"""
-        WebDriverWait(self.driver, 30).until(
-            EC.element_to_be_clickable((By.ID, "subreport"))
-        ).click()
+        self.driver.click(By.ID, "subreport", timeout=30)
         print(f"[{self.platform_name}] Formulario enviado.")
     
     def wait_for_results_tab(self):
-        """Espera y cambia a la pestaña de resultados, con diagnóstico mejorado."""
-        print(f"[{self.platform_name}] Esperando nueva pestaña... (Pestañas actuales: {len(self.driver.window_handles)})")
-        print(f"[{self.platform_name}] URL actual antes de la espera: {self.driver.current_url}")
-
-        t5b_start = time.time()
-        timeout_new_tab = 30
-        
-        while time.time() - t5b_start < timeout_new_tab:
-            if len(self.driver.window_handles) > 2: # Asumiendo 2 pestañas: original + formulario
-                self.driver.switch_to.window(self.driver.window_handles[-1])
-                print(f"[{self.platform_name}] Nueva pestaña detectada. URL: {self.driver.current_url}")
-                return
-            time.sleep(1)
-        
-        # --- INICIO DE DIAGNÓSTICO DE TIMEOUT ---
-        print(f"[{self.platform_name}] [DIAGNÓSTICO] Timeout. No se abrió una nueva pestaña.")
-        try:
-            num_handles = len(self.driver.window_handles)
-            current_url = self.driver.current_url
-            print(f"[{self.platform_name}] [DIAGNÓSTICO] Pestañas al final: {num_handles}")
-            print(f"[{self.platform_name}] [DIAGNÓSTICO] URL final: {current_url}")
-            
-            # Guardar captura de pantalla para depuración
-            screenshot_path = f"debug_timeout_{self.reporte_nombre}.png"
-            self.driver.save_screenshot(screenshot_path)
-            print(f"[{self.platform_name}] [DIAGNÓSTICO] Captura de pantalla guardada en: {screenshot_path}")
-        except Exception as diag_e:
-            print(f"[{self.platform_name}] [DIAGNÓSTICO] Error adicional durante el diagnóstico: {diag_e}")
-        # --- FIN DE DIAGNÓSTICO ---
-
-        raise TimeoutException("No se abrió la pestaña de resultados en tiempo")
+        print(f"[{self.platform_name}] Esperando pestaña de resultados...")
+        # Esperar a que haya 3 pestañas: original, formulario, y resultados
+        WebDriverWait(self.driver, 30).until(lambda d: len(d.window_handles) >= 3)
+        self.driver.switch_to.window(self.driver.window_handles[-1])
+        print(f"[{self.platform_name}] Nueva pestaña de resultados detectada.")
     
     def check_no_data_conditions(self):
-        """
-        Verifica condiciones de 'no data found'
-        """
-        # Verificar popup "No data found"
         try:
-            popup = WebDriverWait(self.driver, 4).until(
-                EC.presence_of_element_located((By.ID, "MGSJE"))
-            )
+            popup = WebDriverWait(self.driver, 4).until(EC.presence_of_element_located((By.ID, "MGSJE")))
             if "no data found" in popup.text.lower():
-                print(f"[{self.platform_name}] [WARNING] No data found (en popup #MGSJE)")
                 return {'status': "no_data", 'mensaje': "No data found"}
         except TimeoutException:
             pass
-        
-        # Verificar alertas JavaScript
-        for _ in range(1): # Reduced from 10 to 1 for efficiency if multiple checks aren't strictly needed
-            try:
-                alert = self.driver.switch_to.alert
-                alert_text = alert.text
-                alert.accept()
-                print(f"[{self.platform_name}] [WARNING] Pop-up detectado y cerrado: '{alert_text}'")
-                return {'status': "popup", 'mensaje': f"Pop-up cerrado: {alert_text}"}
-            except NoAlertPresentException:
-                break # Exit loop if no alert is present
-            except Exception: # Catch other potential exceptions during alert handling
-                pass
-        
+        try:
+            alert = self.driver.switch_to.alert
+            alert_text = alert.text
+            alert.accept()
+            return {'status': "popup", 'mensaje': f"Pop-up cerrado: {alert_text}"}
+        except NoAlertPresentException:
+            pass
         return None
     
     def return_to_form(self):
-        """Regresa a la pestaña del formulario"""
-        if len(self.driver.window_handles) > 1:
-            self.driver.switch_to.window(self.driver.window_handles[1])
-        else:
-            print(f"[{self.platform_name}] No queda pestaña de formulario para regresar.")
+        # La pestaña de resultados se cierra, volvemos a la del formulario
+        if len(self.driver.window_handles) > 2:
+             self.driver.close() # Cierra la pestaña actual (resultados)
+        self.driver.switch_to.window(self.driver.window_handles[1])
 
     def _process_file(self, archivo_descargado, fecha_dt, **kwargs):
-        """
-        Procesa el archivo descargado: renombra y mueve a su destino final.
-        """
         if not archivo_descargado:
-            print(f"[{self.platform_name}] [WARNING] No se detectó ninguna descarga.")
+            print(f"[WARNING] No se detectó ninguna descarga.")
             return
-
-        # Generar nuevo nombre para el archivo
         nuevo_nombre = self.generate_filename(fecha_dt, **kwargs)
         if not nuevo_nombre.endswith(archivo_descargado.suffix):
              nuevo_nombre += archivo_descargado.suffix
-
-        # Renombrar el archivo en la carpeta temporal de la sesión
         new_path = self.driver.download_dir / nuevo_nombre
         if not renombrar_archivo(archivo_descargado, new_path, log_fn=print):
-             print(f"[{self.platform_name}] [ERROR] No se pudo renombrar el archivo '{archivo_descargado.name}'.")
+             print(f"[ERROR] No se pudo renombrar el archivo '{archivo_descargado.name}'.")
              return
-
-        # Obtener rutas de destino
         destinos = self.get_destination_paths(nuevo_nombre, fecha_dt, **kwargs)
-
-        # Mover archivo a los destinos
         for i, dest in enumerate(destinos):
             try:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 if i == 0:
-                    # Mover el primer archivo
                     shutil.move(new_path, dest)
                 else:
-                    # Copiar para los siguientes destinos
                     shutil.copy2(destinos[0], dest)
-                print(f"[{self.platform_name}] ✓ Archivo movido a: {dest}")
+                print(f"✓ Archivo procesado y movido a: {dest}")
             except Exception as e:
-                print(f"[{self.platform_name}] [ERROR] No se pudo mover/copiar el archivo a '{dest}': {e}")
+                print(f"[ERROR] No se pudo mover/copiar el archivo a '{dest}': {e}")
+    
+    def cerrar(self):
+        print(f"[{self.platform_name}] ℹ Scraper finalizado, driver permanece activo para otros scrapers.")
 
-
-    # ====================================
-    # MÉTODOS ABSTRACTOS (a implementar en subclases)
-    # ====================================
+    # =======================================================================
+    # -- MÉTODOS ABSTRACTOS (a ser implementados por los scrapers hijos) --
+    # =======================================================================
 
     @abstractmethod
-    def get_date_field_ids(self):
+    def _get_work_items(self, fechas, **kwargs) -> list:
         """
-        Retorna tupla con IDs de campos de fecha (from_id, to_id)
-        Debe ser implementado por cada clase derivada
+        Debe generar la lista de 'unidades de trabajo' a procesar.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def form_url(self) -> str:
+        """
+        Debe devolver la URL del formulario específico del reporte.
+        """
+        pass
+
+    @abstractmethod
+    def get_date_field_ids(self) -> tuple:
+        """
+        Debe devolver una tupla con los IDs de los campos de fecha. Ej: ("from", "to")
         """
         pass
     
     @abstractmethod
     def fill_additional_fields(self, **kwargs):
         """
-        Llena campos específicos del formulario (dropdowns, etc.)
-        Debe ser implementado por cada clase derivada
+        Debe implementar el llenado de campos adicionales específicos del formulario.
         """
         pass
     
     @abstractmethod
-    def generate_filename(self, fecha_dt, **kwargs):
+    def generate_filename(self, fecha_dt, **kwargs) -> str:
         """
-        Genera el nombre del archivo basado en la fecha y parámetros específicos
-        Debe ser implementado por cada clase derivada
+        Debe generar el nombre base del archivo final.
         """
         pass
     
     @abstractmethod
-    def get_destination_paths(self, nuevo_nombre, fecha_dt, **kwargs):
+    def get_destination_paths(self, nuevo_nombre, fecha_dt, **kwargs) -> list:
         """
-        Genera las rutas de destino para el archivo
-        Debe ser implementado por cada clase derivada
+        Debe generar la lista de rutas de destino finales para el archivo.
         """
         pass
