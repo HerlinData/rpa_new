@@ -2,10 +2,14 @@ from scrapers.sites.salesys.core.base_salesys import BaseSalesys
 from config.settings import ROUTES
 from utils.route_builder import build_destination_paths, build_filename
 
-class EstadoAgenteV2Scraper(BaseSalesys):
+class DeliveryRechazoScraper(BaseSalesys):
 
-    def __init__(self, session_manager=None):
-        super().__init__(reporte_nombre="estado_agente_v2", session_manager=session_manager)
+    def __init__(self, usuarios=None, session_manager=None):
+        super().__init__(reporte_nombre="rechazo_delivery", session_manager=session_manager)
+
+        # Usuarios a procesar desde YAML o parámetro
+        config_usuarios = ROUTES.get(self.reporte_nombre, {}).get('usuarios')
+        self.usuarios = usuarios or config_usuarios or ["Todo"]
 
     @property
     def form_url(self) -> str:
@@ -26,4 +30,8 @@ class EstadoAgenteV2Scraper(BaseSalesys):
         return build_destination_paths(self.reporte_nombre, fecha_dt, **kwargs)
 
     def _get_work_items(self, fechas, **kwargs) -> list:
-        return fechas
+        work_items = []
+        for fecha in fechas:
+            for usuario in self.usuarios:
+                work_items.append((fecha, usuario))
+        return work_items

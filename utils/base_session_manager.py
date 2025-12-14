@@ -121,13 +121,57 @@ class BaseSessionManager(ABC):
         if self._driver:
             try:
                 self._log(f"[{self.platform_name}] Cerrando sesión...")
-                self._driver.quit()
-                self._log(f"[{self.platform_name}] ✓ Sesión cerrada correctamente")
+
+                # Intentar cerrar con timeout para evitar quedar pegado
+                import threading
+
+                def quit_driver():
+                    try:
+                        self._driver.quit()
+                    except:
+                        pass
+
+                # Ejecutar quit en thread separado con timeout
+                quit_thread = threading.Thread(target=quit_driver, daemon=True)
+                quit_thread.start()
+                quit_thread.join(timeout=5)  # Esperar máximo 5 segundos
+
+                if quit_thread.is_alive():
+                    self._log(f"[{self.platform_name}] ⚠ Timeout cerrando navegador (5s), forzando cierre...")
+                    # Matar procesos Chrome zombies
+                    self._kill_chrome_processes()
+                else:
+                    self._log(f"[{self.platform_name}] ✓ Sesión cerrada correctamente")
+
             except Exception as e:
                 self._log(f"[{self.platform_name}] ⚠ Error cerrando sesión: {e}")
             finally:
                 self._driver = None
                 self._logged_in = False
+
+    def _kill_chrome_processes(self):
+        """
+        Mata procesos Chrome/ChromeDriver zombies.
+        Útil cuando el navegador crashea y no responde al quit().
+        """
+        try:
+            import subprocess
+            import platform
+
+            if platform.system() == 'Windows':
+                # Windows: taskkill
+                subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe'],
+                             capture_output=True, timeout=3)
+                subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'],
+                             capture_output=True, timeout=3)
+            else:
+                # Linux/Mac: pkill
+                subprocess.run(['pkill', '-9', 'chrome'],
+                             capture_output=True, timeout=3)
+                subprocess.run(['pkill', '-9', 'chromedriver'],
+                             capture_output=True, timeout=3)
+        except Exception:
+            pass  # Ignorar errores al matar procesos
 
     def _log(self, msg):
         """

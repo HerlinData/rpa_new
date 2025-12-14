@@ -1,23 +1,14 @@
 # ====================================
 # SALESYS SESSION MANAGER
 # ====================================
-# Gestor de sesión específico para la plataforma SalesYs
-# Implementa login y reutilización de sesión para todos los scrapers de SalesYs
 
 from utils.base_session_manager import BaseSessionManager
 from utils.selenium_driver import SeleniumDriver
-from config.settings import (
-    SALESYS_URL,
-    SALESYS_USER,
-    SALESYS_PASS,
-    MAX_LOGIN_ATTEMPTS,
-    LOGIN_TIMEOUT
-)
+from config.settings import (SALESYS_URL, SALESYS_USER, SALESYS_PASS, SALESYS_EXTENSION, SALESYS_DEVICE, MAX_LOGIN_ATTEMPTS, LOGIN_TIMEOUT)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-
 
 class SalesYsSessionManager(BaseSessionManager):
     """
@@ -48,9 +39,9 @@ class SalesYsSessionManager(BaseSessionManager):
                     
                     # Implementación de login de Salesys
                     self._driver.find_element(By.ID, "extension").clear()
-                    self._driver.find_element(By.ID, "extension").send_keys("4271") # Hardcoded
+                    self._driver.find_element(By.ID, "extension").send_keys(SALESYS_EXTENSION)
                     self._driver.find_element(By.ID, "deviceName").clear()
-                    self._driver.find_element(By.ID, "deviceName").send_keys("PC4271") # Hardcoded
+                    self._driver.find_element(By.ID, "deviceName").send_keys(SALESYS_DEVICE)
                     self._driver.find_element(By.ID, "submitButton").click()
                     
                     # Esperar a que aparezca el formulario de usuario/pass
@@ -66,7 +57,7 @@ class SalesYsSessionManager(BaseSessionManager):
                     
                     # --- VERIFICACIÓN DE LOGIN ---
                     # Esperar un momento para que la página reaccione
-                    time.sleep(3) 
+                    time.sleep(3)
 
                     # Verificar si el login fue exitoso. Si el campo de usuario aún existe, falló.
                     try:
@@ -77,6 +68,9 @@ class SalesYsSessionManager(BaseSessionManager):
                         # Si NO encuentra el elemento, el login fue exitoso.
                         self._logged_in = True
                         self._log(f"[{self.platform_name}] ✓ Login verificado y exitoso")
+
+                        # Esperar adicional para que las cookies/sesión se establezcan completamente
+                        time.sleep(2)
                         return True
 
                 except Exception as e:
@@ -91,7 +85,6 @@ class SalesYsSessionManager(BaseSessionManager):
         except Exception as e:
             self._log(f"[{self.platform_name}] ✗ Error crítico durante login: {e}")
             return False
-
 
 # ====================================
 # HELPER FUNCTION

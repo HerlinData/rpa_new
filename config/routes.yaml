@@ -1,0 +1,73 @@
+
+# ====================================
+# REPORTES DE SALESYS
+# ====================================
+# NOTA: La ruta base (BASE_OUTPUT_PATH) se configura en el archivo .env
+
+estado_agente_v2:
+  form_url: "http://amgclaro.touscorp.com/SaleSys/index.php/newstylereports/report_?id=259"
+  date_fields: ["from", "to"]
+  rutas:
+    - "{year}/Estado Agente/{month}"
+  filename: "EstadoAgente{day}"
+  extension: ".csv"
+
+rga:
+  form_url: "http://amgclaro.touscorp.com/SaleSys/index.php/generaldeatencionesreport/form"
+  date_fields: ["fromdate", "todate"]
+  desplegable:
+    id: "product_chosen"
+    tipo: "chosen"
+  extension: ".csv"
+
+  # Todas las opciones disponibles del desplegable
+  archivos:
+    DELIVERY:
+      rutas:
+        - "{year}/Delivery/{month}/General"
+      filename: "delivery{day}"
+    HFC:
+      rutas:
+        - "{year}/Activaciones/{month}/{product}"
+      filename: "hfc{day}"
+    FTTH:
+      rutas:
+        - "{year}/FTTH/{month}"
+      filename: "ftth{day}"
+    OTROS:
+      rutas:
+        - "{year}/Otros/{month}"
+      filename: "otros{day}"
+    EMPRESA:
+      rutas:
+        - "{year}/Empresa/{month}"
+      filename: "empresa{day}"
+    LTE:
+      rutas:
+        - "{year}/LTE/{month}"
+      filename: "lte{day}"
+
+
+rechazo_delivery:
+  form_url: "http://amgclaro.touscorp.com/SaleSys/index.php/newstylereports/report_?id=263"
+  date_fields: ["from", "to"]
+  usuarios: ["Todo"]
+  desplegable:
+    id: "usuario"
+    tipo: "select"  # Select estándar HTML
+    metodo: "value"  # select_by_value
+  extension: ".csv"
+  archivos:
+    Todo: # Selección del desplegable
+      rutas:
+        - "{year}/Delivery/{month}/Rechazo"
+      filename: "rechazo{day}"
+
+
+reprogramacion_delivery:
+  form_url: "http://amgclaro.touscorp.com/SaleSys/index.php/newstylereports/report_?id=262"
+  date_fields: ["from", "to"]
+  rutas:
+    - "{year}/Delivery/{month}/Reprogramacion"
+  filename: "ReprogramacionDelivery{day}"
+  extension: ".csv"

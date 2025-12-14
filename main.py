@@ -8,7 +8,7 @@
 from scrapers.sites.salesys.core.session_manager import get_salesys_session
 from scrapers.sites.salesys.reports.estado_agente_v2 import EstadoAgenteV2Scraper
 from scrapers.sites.salesys.reports.rga import RGAScraper
-
+from scrapers.sites.salesys.reports.delivery_rechazo import DeliveryRechazoScraper
 
 def ejecutar_scrapers_salesys():
     """
@@ -41,9 +41,22 @@ def ejecutar_scrapers_salesys():
         # ========================================
         # SCRAPER 2: RGA
         # ========================================)
-        rga = RGAScraper(session_manager=session)
+        productos_default = ["DELIVERY", "HFC"]
+        rga = RGAScraper(session_manager=session, productos=productos_default)
         rga.ejecutar(fechas=fechas_a_procesar)
         print("✓ Proceso de RGA finalizado.")
+           
+        
+        
+        
+        
+        
+        # ========================================
+        # SCRAPER 3: DELIVERY RECHAZO
+        # ========================================)
+        rga = DeliveryRechazoScraper(session_manager=session)
+        rga.ejecutar(fechas=fechas_a_procesar)
+        print("✓ Proceso de DELIVERY RECHAZO finalizado.")
         
         print("\n" + "=" * 60)
         print("✓ TODOS LOS SCRAPERS DE SALESYS COMPLETADOS")
@@ -102,9 +115,31 @@ def ejecutar_solo_rga():
     fechas_a_procesar = [(hoy - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(2)]
     print(f"Rango de fechas a procesar: {fechas_a_procesar}")
 
-    rga = RGAScraper()
+    # Default temporal para CLI - La web pasará productos dinámicamente
+    productos_default = ["DELIVERY", "HFC"]
+    print(f"Productos a descargar: {productos_default}")
+
+    rga = RGAScraper(productos=productos_default)
     rga.ejecutar(fechas=fechas_a_procesar)
     print("✓ Proceso de RGA finalizado.")
+    
+def ejecutar_solo_DeliveryRechazo():
+    """
+    Ejecuta solo el scraper de DeliveryRechazo para un rango de fechas.
+    """
+    print("Ejecutando solo scraper de DeliveryRechazo...")
+    from datetime import date, timedelta
+    hoy = date.today()
+    fechas_a_procesar = [(hoy - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(2)]
+    print(f"Rango de fechas a procesar: {fechas_a_procesar}")
+
+    # Default temporal para CLI - La web pasará usuarios dinámicamente
+    usuarios_default = ["Todo"]
+    print(f"Usuarios a descargar: {usuarios_default}")
+
+    delivery_rechazo = DeliveryRechazoScraper(usuarios=usuarios_default)
+    delivery_rechazo.ejecutar(fechas=fechas_a_procesar)
+    print("✓ Proceso de DeliveryRechazo finalizado.")
 
 
 # ====================================
@@ -123,6 +158,8 @@ if __name__ == "__main__":
             ejecutar_solo_estado_agente_v2()
         elif comando == "rga":
             ejecutar_solo_rga()
+        elif comando == "deliveryrechazo":
+            ejecutar_solo_DeliveryRechazo()
         else:
             print("Comandos disponibles:")
             print("  python main.py            - Ejecutar proceso completo")
