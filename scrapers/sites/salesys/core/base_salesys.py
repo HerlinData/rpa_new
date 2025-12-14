@@ -14,8 +14,6 @@ from config.settings import SALESYS_USER, SALESYS_PASS
 import time
 import shutil
 from utils.file_system import renombrar_archivo
-
-
 from datetime import datetime
 
 class BaseSalesys(BaseScraper):
@@ -125,20 +123,14 @@ class BaseSalesys(BaseScraper):
     # =================================================
     # --- MÉTODOS DE AYUDA (LÓGICA COMÚN) ---
     # =================================================
-
-        def configurar_driver(self):
-
-            """
-
-            Obtiene driver con sesión activa del SessionManager.
-
-            """
-
-            print("--- ¡ESTOY USANDO EL CONFIGURAR_DRIVER CORRECTO DE BASESALESYS! ---")
-
-            self.driver = self.session_manager.get_driver(log_fn=print)
-
-            print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")
+    
+    def configurar_driver(self):
+        """
+        Obtiene driver con sesión activa del SessionManager.
+        """
+        print("--- ¡ESTOY USANDO EL CONFIGURAR_DRIVER CORRECTO DE BASESALESYS! ---")
+        self.driver = self.session_manager.get_driver(log_fn=print)
+        print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")
 
     def login(self):
         if not self.session_manager.is_logged_in():
@@ -230,7 +222,7 @@ class BaseSalesys(BaseScraper):
         print(f"[{self.platform_name}] ℹ Scraper finalizado, driver permanece activo para otros scrapers.")
 
     # =======================================================================
-    # -- MÉTODOS ABSTRACTOS (a ser implementados por los scrapers hijos) --
+    # -- MÉTODOSABSTRACTOS (a ser implementados por los scrapers hijos) --
     # =======================================================================
 
     @abstractmethod
