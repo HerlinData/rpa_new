@@ -186,42 +186,60 @@ class SeleniumDriver(webdriver.Chrome):
 
         return self.download_dir
 
-    def esperar_descarga(self, timeout: int = 60, extension: str = None) -> Path:
+    def limpiar_descargas(self):
         """
-        Espera a que se complete una descarga usando Chrome DevTools Protocol (CDP).
+        Limpia la carpeta de descargas para asegurar detección confiable.
+        Elimina archivos .csv, .xls, .xlsx pero mantiene .crdownload activos.
         """
-        # Obtener directorio de descargas configurado
+        directorio = self._obtener_directorio_descargas()
+        extensiones_a_limpiar = ['.csv', '.xls', '.xlsx', '.txt', '.pdf']
+
+        for archivo in directorio.glob("*"):
+            if archivo.is_file() and archivo.suffix in extensiones_a_limpiar:
+                try:
+                    archivo.unlink()
+                except Exception:
+                    pass  # Ignorar archivos en uso
+
+    def esperar_descarga(self, timeout: int = 60, extension: str = None, limpiar_antes: bool = True) -> Path:
+        """
+        Espera a que se complete una descarga.
+
+        Args:
+            timeout: Tiempo máximo de espera en segundos
+            extension: Extensión esperada del archivo (ej: '.csv')
+            limpiar_antes: Si True, limpia la carpeta antes de esperar
+
+        Returns:
+            Path del archivo descargado
+        """
         directorio = self._obtener_directorio_descargas()
 
-        # Listar archivos existentes ANTES de la descarga
-        archivos_antes = set(directorio.glob("*"))
-        tiempo_inicio = time.time()
+        # Opcionalmente limpiar carpeta para detección confiable
+        if limpiar_antes:
+            self.limpiar_descargas()
+            time.sleep(0.5)  # Breve pausa para que se complete la limpieza
 
-        descarga_iniciada = False
+        tiempo_inicio = time.time()
 
         while time.time() - tiempo_inicio < timeout:
             # Buscar archivos temporales de descarga
             archivos_temp = list(directorio.glob("*.crdownload")) + list(directorio.glob("*.tmp"))
 
-            if archivos_temp:
-                descarga_iniciada = True
-
-            # Si la descarga se inició y ya no hay archivos temporales
-            if descarga_iniciada and not archivos_temp:
-                # Buscar archivos nuevos
-                archivos_ahora = set(directorio.glob("*"))
-                archivos_nuevos = archivos_ahora - archivos_antes
+            # Si NO hay archivos temporales, buscar el archivo descargado
+            if not archivos_temp:
+                archivos = list(directorio.glob("*"))
 
                 # Filtrar por extensión si se especificó
                 if extension:
-                    archivos_nuevos = {f for f in archivos_nuevos if f.suffix == extension}
+                    archivos = [f for f in archivos if f.suffix == extension]
 
                 # Filtrar solo archivos (no directorios)
-                archivos_nuevos = {f for f in archivos_nuevos if f.is_file()}
+                archivos = [f for f in archivos if f.is_file()]
 
-                if archivos_nuevos:
+                if archivos:
                     # Retornar el más reciente
-                    archivo_descargado = max(archivos_nuevos, key=lambda f: f.stat().st_mtime)
+                    archivo_descargado = max(archivos, key=lambda f: f.stat().st_mtime)
                     return archivo_descargado
 
             time.sleep(1.5)

@@ -24,8 +24,15 @@ class EstadoAgenteV2Scraper(BaseSalesys):
     def navegar_a_reporte(self):
         """Navega específicamente al reporte de Estado Agente V2."""
         print(f"[{self.platform_name}] Navegando a {SALESYS_ESTADO_AGENTE_V2_FORM_URL}")
-        self.driver.get(SALESYS_ESTADO_AGENTE_V2_FORM_URL)
-        # TODO: Añadir esperas (WebDriverWait) si la página tarda en cargar o necesita interacción inicial.
+
+        # Abrir formulario en nueva pestaña (como el código original)
+        import time
+        from selenium.webdriver.support.ui import WebDriverWait
+
+        self.driver.execute_script(f"window.open('{SALESYS_ESTADO_AGENTE_V2_FORM_URL}');")
+        WebDriverWait(self.driver, 30).until(lambda d: len(d.window_handles) > 1)
+        self.driver.switch_to.window(self.driver.window_handles[-1])
+        time.sleep(2)
 
     def descargar_archivo(self, fecha, **kwargs) -> Path:
         """
@@ -57,12 +64,16 @@ class EstadoAgenteV2Scraper(BaseSalesys):
                 return # Salir de este proceso de fecha
 
             # 7. Hacer clic en el botón de descarga y esperar
-            # (PLACEHOLDER - Se necesita el ID o selector real del botón)
-            download_button_selector = (By.CLASS_NAME, "download") # ¡AJUSTAR ESTE SELECTOR!
+            download_button_selector = (By.CLASS_NAME, "download")
             download_elem = self.driver.esperar(*download_button_selector, timeout=20)
+
+            # Scroll al elemento antes de hacer click
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", download_elem)
             download_elem.click()
-            
-            archivo_descargado = self.driver.esperar_descarga(extension=".xlsx", timeout=60) # Asumo .xlsx
+            print(f"[{self.platform_name}] Clic en botón de descarga enviado.")
+
+            # Esperar archivo descargado (SalesYs descarga CSV)
+            archivo_descargado = self.driver.esperar_descarga(extension=".csv", timeout=60)
             
             # 8. Procesar (renombrar y mover) el archivo descargado
             self._process_file(archivo_descargado, fecha_dt, **kwargs)
