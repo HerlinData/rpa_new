@@ -124,6 +124,7 @@ class BaseSalesys(BaseScraper):
     # --- MÉTODOS DE AYUDA (LÓGICA COMÚN) ---
     # =================================================
     
+    
     def configurar_driver(self):
         """
         Obtiene driver con sesión activa del SessionManager.
