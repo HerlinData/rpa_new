@@ -126,6 +126,13 @@ class BaseSalesys(BaseScraper):
     # --- MÉTODOS DE AYUDA (LÓGICA COMÚN) ---
     # =================================================
 
+    def configurar_driver(self):
+        """
+        Obtiene driver con sesión activa del SessionManager.
+        """
+        self.driver = self.session_manager.get_driver(log_fn=print)
+        print(f"[{self.platform_name}] ✓ Driver configurado con sesión activa")
+
     def login(self):
         if not self.session_manager.is_logged_in():
             raise Exception(f"[{self.platform_name}] Sesión no establecida")
